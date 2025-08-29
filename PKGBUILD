@@ -1,11 +1,11 @@
 pkgname=(glibc glibc-32bit)
 pkgbase=glibc
 pkgver=2.42
-pkgrel=1
+pkgrel=2
 arch=('x86_64')
 url="https://www.gnu.org/software/libc/"
 license=('GPL-2.0-or-later' 'LGPL-2.1-or-later')
-makedepends=('linux-api-headers' 'tzdata')
+makedepends=('gcc-libs-32bit' 'python')
 options=('!lto')
 source=(https://ftp.gnu.org/gnu/${pkgbase}/${pkgbase}-${pkgver}.tar.xz
     https://www.linuxfromscratch.org/patches/downloads/${pkgbase}/${pkgbase}-${pkgver}-fhs-1.patch
@@ -39,7 +39,12 @@ build() {
         --enable-kernel=5.4
         --enable-stack-protector=strong
         --enable-multi-arch
+        --enable-bind-now
+        --enable-fortify-source
+        --disable-profile
+        --without-selinux
         --with-pkgversion="Flarebird Glibc ${pkgver}"
+        --with-bugurl=https://github.com/FlarebirdOS/glibc/issues
     )
 
     CFLAGS=${CFLAGS/-Wp,-D_FORTIFY_SOURCE=3/}
@@ -56,7 +61,9 @@ build() {
             libc_cv_slibdir=/usr/lib64  \
             "${configure_args[@]}"
 
-        make
+        make -O
+
+        make info
     )
 
     (
@@ -79,7 +86,7 @@ build() {
             libc_cv_slibdir=/usr/lib32       \
             "${configure_args[@]}"
 
-        make
+        make -O
     )
 }
 
@@ -87,6 +94,7 @@ package_glibc() {
     pkgdesc="GNU C Library"
     depends=('linux-api-headers' 'tzdata')
     backup=(
+        etc/gai.conf
         etc/ld.so.conf
         etc/nsswitch.conf
     )
@@ -94,6 +102,8 @@ package_glibc() {
     cd ${pkgbase}-${pkgver}/${pkgbase}-build
 
     make DESTDIR=${pkgdir} install
+
+    install -m644 ../posix/gai.conf ${pkgdir}/etc/gai.conf
 
     install -vdm755 ${pkgdir}/usr/lib/locale
 
